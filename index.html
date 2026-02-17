@@ -72,6 +72,16 @@
     color: #4CAF50;
   }
 
+  .remaining-badge {
+    background: var(--gray);
+    border: 1px solid #333;
+    padding: 8px 16px;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--yellow);
+    margin-left: 8px;
+  }
+
   /* HERO */
   .hero {
     padding: 80px 40px 40px;
@@ -311,7 +321,10 @@
     <div class="logo">MAKE<span>ME</span>GAME</div>
     <div class="tagline">AI-Powered Game Generator</div>
   </div>
-  <div class="status-badge">● ONLINE</div>
+  <div style="display: flex; align-items: center;">
+    <div class="status-badge">● ONLINE</div>
+    <div class="remaining-badge" id="remaining-badge" style="display: none;">3 FREE GAMES TODAY</div>
+  </div>
 </header>
 
 <div class="deco-line"></div>
@@ -450,6 +463,13 @@
 
       const data = await response.json();
       const html = data.html;
+      
+      // Update remaining count
+      if (data.remaining !== undefined) {
+        const badge = document.getElementById('remaining-badge');
+        badge.style.display = 'block';
+        badge.textContent = `${data.remaining} FREE ${data.remaining === 1 ? 'GAME' : 'GAMES'} LEFT TODAY`;
+      }
 
       // Display game
       stopStatusCycle();
@@ -478,7 +498,14 @@
       document.getElementById('status-bar').classList.remove('visible');
 
       const errorBox = document.getElementById('error-box');
-      errorBox.textContent = `ERROR: ${err.message}\n\nPlease try again or contact support if the problem persists.`;
+      
+      // Check if it's a rate limit error
+      if (err.message.includes('Daily limit')) {
+        errorBox.innerHTML = `<strong>DAILY LIMIT REACHED</strong><br><br>${err.message}<br><br>Want unlimited games? Upgrades coming soon!`;
+      } else {
+        errorBox.textContent = `ERROR: ${err.message}\n\nPlease try again or contact support if the problem persists.`;
+      }
+      
       errorBox.classList.add('visible');
 
     } finally {
