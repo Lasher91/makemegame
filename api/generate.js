@@ -1,10 +1,62 @@
 // Vercel Serverless Function for game generation
 // This handles the API calls to Claude so users don't need API keys
 
+// Simple in-memory rate limiting (resets on cold start)
+// For production, use Redis or a database
+const rateLimitStore = new Map();
+const RATE_LIMIT = 3; // games per day per IP
+const RATE_LIMIT_WINDOW = 24 * 60 * 60 * 1000; // 24 hours in ms
+
+function getRateLimitKey(ip) {
+  const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  return `${ip}_${date}`;
+}
+
+function checkRateLimit(ip) {
+  const key = getRateLimitKey(ip);
+  const now = Date.now();
+  
+  // Clean up old entries
+  for (const [k, v] of rateLimitStore.entries()) {
+    if (now - v.timestamp > RATE_LIMIT_WINDOW) {
+      rateLimitStore.delete(k);
+    }
+  }
+  
+  const record = rateLimitStore.get(key);
+  
+  if (!record) {
+    rateLimitStore.set(key, { count: 1, timestamp: now });
+    return { allowed: true, remaining: RATE_LIMIT - 1 };
+  }
+  
+  if (record.count >= RATE_LIMIT) {
+    return { allowed: false, remaining: 0 };
+  }
+  
+  record.count++;
+  return { allowed: true, remaining: RATE_LIMIT - record.count };
+}
+
 export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+  
+  // Get user IP (works with Vercel)
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || 
+             req.headers['x-real-ip'] || 
+             req.socket.remoteAddress || 
+             'unknown';
+  
+  // Check rate limit
+  const rateLimit = checkRateLimit(ip);
+  
+  if (!rateLimit.allowed) {
+    return res.status(429).json({ 
+      error: 'Daily limit reached. You can generate 3 games per day. Try again tomorrow or upgrade to unlimited!' 
+    });
   }
 
   // Get the API key from environment variables
@@ -88,10 +140,14 @@ The game should be creative, fun, and immediately playable. Include a score syst
     }
 
     // Return the game HTML
-    return res.status(200).json({ 
-      success: true,
-      html: html 
-    });
+    return res.status(200)
+      .setHeader('X-RateLimit-Limit', RATE_LIMIT)
+      .setHeader('X-RateLimit-Remaining', rateLimit.remaining)
+      .json({ 
+        success: true,
+        html: html,
+        remaining: rateLimit.remaining
+      });
 
   } catch (error) {
     console.error('Server error:', error);
