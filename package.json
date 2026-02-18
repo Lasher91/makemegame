@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "nanoid": "^5.0.4"
+    "nanoid": "^5.0.4",
+    "@vercel/kv": "^1.0.1"
   }
 }
