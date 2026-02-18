@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Room code and player name are required' });
   }
 
-  const room = storage.getRoom(roomCode);
+  const room = await storage.getRoom(roomCode);
 
   if (!room) {
     return res.status(404).json({ error: 'Room not found. Check the code and try again.' });
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
   });
 
   // Update room in storage
-  storage.setRoom(roomCode, room);
+  await storage.setRoom(roomCode, room);
 
   return res.status(200).json({
     success: true,
