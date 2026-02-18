@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Game ID is required' });
   }
 
-  const game = storage.getSavedGame(gameId);
+  const game = await storage.getSavedGame(gameId);
 
   if (!game) {
     return res.status(404).json({ error: 'Game not found. It may have expired.' });
