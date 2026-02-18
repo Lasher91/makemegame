@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MakeMeGame — AI Party Game Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Righteous&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --neon-pink: #FF006E;
+    --neon-blue: #00F5FF;
+    --neon-purple: #8B5CF6;
+    --dark: #0a0a0a;
+    --dark-card: #1a1a1a;
+    --text: #ffffff;
+    --text-dim: #888;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ANIMATED GRADIENT BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(circle at 20% 50%, rgba(255, 0, 110, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(0, 245, 255, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 50% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
+    animation: gradientShift 15s ease infinite;
+    pointer-events: none;
+  }
+
+  @keyframes gradientShift {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+  }
+
+  /* HEADER */
+  header {
+    padding: 32px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    position: relative;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Righteous', sans-serif;
+    font-size: 2rem;
+    background: linear-gradient(135deg, var(--neon-pink), var(--neon-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 1px;
+  }
+
+  .header-badges {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .badge {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  .badge.online { color: #4CAF50; }
+  .badge.limit { color: var(--neon-pink); }
+
+  /* HERO */
+  .hero {
+    text-align: center;
+    padding: 80px 40px 60px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .hero h1 {
+    font-family: 'Righteous', sans-serif;
+    font-size: clamp(2.5rem, 8vw, 5rem);
+    line-height: 1.1;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, #fff 0%, var(--neon-blue) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero .subtitle {
+    font-size: 1.25rem;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    font-weight: 600;
+  }
+
+  .hero .description {
+    font-size: 1rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 48px;
+  }
+
+  .hero .features {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-bottom: 48px;
+  }
+
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+
+  .feature span {
+    font-size: 1.5rem;
+  }
+
+  /* SECTION TOGGLE */
+  .mode-toggle {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-bottom: 48px;
+  }
+
+  .mode-btn {
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.1);
+    color: var(--text-dim);
+    padding: 16px 32px;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .mode-btn:hover {
+    border-color: rgba(255,255,255,0.3);
+  }
+
+  .mode-btn.active {
+    background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 8px 32px rgba(255, 0, 110, 0.3);
+  }
+
+  /* SCREENS */
+  .screen {
+    display: none;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 40px 80px;
+  }
+
+  .screen.active { display: block; }
+
+  /* CREATE GAME SCREEN */
+  .input-card {
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 40px;
+    margin-bottom: 24px;
+  }
+
+  .input-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  .game-input {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.1);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 1.1rem;
+    padding: 20px;
+    border-radius: 12px;
+    resize: none;
+    outline: none;
+    min-height: 120px;
+    transition: border-color 0.3s;
+  }
+
+  .game-input::placeholder { color: rgba(255,255,255,0.3); }
+  .game-input:focus { border-color: var(--neon-pink); }
+
+  .examples {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .example-chip {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-dim);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+  }
+
+  .example-chip:hover {
+    border-color: var(--neon-pink);
+    color: var(--neon-pink);
+    background: rgba(255, 0, 110, 0.1);
+  }
+
+  .primary-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+    border: none;
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 8px 32px rgba(255, 0, 110, 0.3);
+  }
+
+  .primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(255, 0, 110, 0.4);
+  }
+
+  .primary-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* JOIN GAME SCREEN */
+  .code-input-wrapper {
+    position: relative;
+    margin-bottom: 24px;
+  }
+
+  .code-input {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.1);
+    color: var(--text);
+    font-family: 'Righteous', sans-serif;
+    font-size: 2rem;
+    padding: 24px;
+    border-radius: 12px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+
+  .code-input:focus { border-color: var(--neon-blue); }
+  .code-input::placeholder { color: rgba(255,255,255,0.2); }
+
+  .name-input {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.1);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 1.1rem;
+    padding: 20px;
+    border-radius: 12px;
+    outline: none;
+    margin-bottom: 24px;
+    transition: border-color 0.3s;
+  }
+
+  .name-input:focus { border-color: var(--neon-blue); }
+
+  /* LOBBY SCREEN */
+  .lobby-card {
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 40px;
+    margin-bottom: 24px;
+  }
+
+  .room-code-display {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .room-code-display h2 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  .room-code {
+    font-family: 'Righteous', sans-serif;
+    font-size: 3rem;
+    background: linear-gradient(135deg, var(--neon-pink), var(--neon-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 6px;
+  }
+
+  .players-list {
+    margin-bottom: 32px;
+  }
+
+  .players-list h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  .player-item {
+    background: rgba(255,255,255,0.05);
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .player-name {
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .host-badge {
+    background: var(--neon-pink);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  /* STATUS */
+  .status-bar {
+    max-width: 800px;
+    margin: 0 auto 24px;
+    padding: 0 40px;
+    display: none;
+  }
+
+  .status-bar.visible { display: block; }
+
+  .status-inner {
+    background: rgba(255, 0, 110, 0.1);
+    border-left: 3px solid var(--neon-pink);
+    padding: 20px 24px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: var(--neon-pink);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  /* GAME AREA */
+  .game-section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 40px 80px;
+    display: none;
+  }
+
+  .game-section.visible { display: block; }
+
+  .game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .game-title {
+    font-family: 'Righteous', sans-serif;
+    font-size: 1.5rem;
+    color: var(--neon-pink);
+  }
+
+  .secondary-btn {
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.1);
+    color: var(--text);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .secondary-btn:hover {
+    border-color: var(--neon-pink);
+    color: var(--neon-pink);
+  }
+
+  #game-frame {
+    width: 100%;
+    min-height: 600px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    background: #000;
+  }
+
+  /* ERROR */
+  .error-box {
+    background: rgba(255, 0, 0, 0.1);
+    border-left: 3px solid #ff0033;
+    padding: 20px 24px;
+    border-radius: 12px;
+    color: #ff6b6b;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    display: none;
+    margin-bottom: 24px;
+  }
+
+  .error-box.visible { display: block; }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 40px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 24px 20px; flex-direction: column; gap: 16px; }
+    .hero { padding: 60px 20px 40px; }
+    .screen { padding: 0 20px 60px; }
+    .mode-toggle { flex-direction: column; }
+    .mode-btn { width: 100%; }
+    .input-card, .lobby-card { padding: 24px; }
+    .room-code { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">MAKEMEGAME</div>
+  <div class="header-badges">
+    <div class="badge online">● ONLINE</div>
+    <div class="badge limit" id="limit-badge" style="display: none;">3 FREE GAMES</div>
+  </div>
+</header>
+
+<div class="hero">
+  <h1>AI PARTY GAMES IN SECONDS</h1>
+  <div class="subtitle">Create custom drinking games, trivia, challenges & more</div>
+  <div class="description">Generate unique party games powered by AI. Play solo or invite your friends with a room code. No setup, no downloads, just instant fun.</div>
+  
+  <div class="features">
+    <div class="feature"><span>🎮</span> Unlimited Game Types</div>
+    <div class="feature"><span>👥</span> Multiplayer Lobbies</div>
+    <div class="feature"><span>⚡</span> Instant Generation</div>
+  </div>
+</div>
+
+<div class="mode-toggle">
+  <button class="mode-btn active" id="create-mode-btn" onclick="switchMode('create')">CREATE GAME</button>
+  <button class="mode-btn" id="join-mode-btn" onclick="switchMode('join')">JOIN GAME</button>
+</div>
+
+<!-- CREATE GAME SCREEN -->
+<div class="screen active" id="create-screen">
+  <div class="input-card">
+    <div class="input-label">What party game do you want?</div>
+    <textarea 
+      class="game-input" 
+      id="game-prompt"
+      placeholder="e.g., 'Never Have I Ever drinking game' or 'Cards Against Humanity style game about our friend group' or '90s music trivia with shots'"
+    ></textarea>
+    <div class="examples">
+      <div class="example-chip" onclick="setExample(this)">🍺 Never Have I Ever</div>
+      <div class="example-chip" onclick="setExample(this)">🎯 Truth or Dare Extreme</div>
+      <div class="example-chip" onclick="setExample(this)">🧠 Drunk Trivia Night</div>
+      <div class="example-chip" onclick="setExample(this)">🃏 Cards Against Friends</div>
+      <div class="example-chip" onclick="setExample(this)">👑 Kings Cup Digital</div>
+      <div class="example-chip" onclick="setExample(this)">🎭 Most Likely To...</div>
+    </div>
+  </div>
+  <button class="primary-btn" id="create-btn" onclick="createGame()">Generate Party Game</button>
+</div>
+
+<!-- JOIN GAME SCREEN -->
+<div class="screen" id="join-screen">
+  <div class="input-card">
+    <div class="input-label">Enter Room Code</div>
+    <input 
+      type="text" 
+      class="code-input" 
+      id="join-code"
+      placeholder="PARTY-1234"
+      maxlength="10"
+    />
+    <input 
+      type="text" 
+      class="name-input" 
+      id="player-name"
+      placeholder="Your name"
+      maxlength="20"
+    />
+  </div>
+  <button class="primary-btn" onclick="joinRoom()">Join Party</button>
+</div>
+
+<!-- LOBBY SCREEN -->
+<div class="screen" id="lobby-screen">
+  <div class="lobby-card">
+    <div class="room-code-display">
+      <h2>Share This Code</h2>
+      <div class="room-code" id="room-code-display">PARTY-1234</div>
+    </div>
+    
+    <div class="players-list">
+      <h3>Players in Lobby (<span id="player-count">0</span>)</h3>
+      <div id="players-container"></div>
+    </div>
+    
+    <button class="primary-btn" id="start-game-btn" onclick="startGame()" style="display: none;">Start Game</button>
+    <div style="text-align: center; margin-top: 16px;">
+      <button class="secondary-btn" onclick="leaveLobby()">Leave Lobby</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS -->
+<div class="status-bar" id="status-bar">
+  <div class="status-inner">
+    <div class="spinner"></div>
+    <span class="status-text" id="status-text">Generating your party game...</span>
+  </div>
+</div>
+
+<!-- ERROR -->
+<div style="max-width: 800px; margin: 0 auto; padding: 0 40px;">
+  <div class="error-box" id="error-box"></div>
+</div>
+
+<!-- GAME DISPLAY -->
+<div class="game-section" id="game-section">
+  <div class="game-header">
+    <div class="game-title" id="game-title">YOUR GAME</div>
+    <div style="display: flex; gap: 12px;">
+      <button class="secondary-btn" onclick="shareGame()">📤 Share</button>
+      <button class="secondary-btn" onclick="resetToHome()">New Game</button>
+    </div>
+  </div>
+  <iframe id="game-frame" sandbox="allow-scripts allow-same-origin" frameborder="0"></iframe>
+</div>
+
+<footer>
+  <p>© 2025 MAKEMEGAME — AI Party Game Generator | Powered by Claude AI</p>
+</footer>
+
+<script>
+  // ── STATE MANAGEMENT ──
+  let currentMode = 'create';
+  let currentRoom = null;
+  let isHost = false;
+  let playerName = '';
+  let generatedGameHtml = null;
+
+  // ── MODE SWITCHING ──
+  function switchMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`${mode}-mode-btn`).classList.add('active');
+    
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+    document.getElementById(`${mode}-screen`).classList.add('active');
+  }
+
+  // ── EXAMPLES ──
+  function setExample(el) {
+    const text = el.textContent.replace(/^[^\w]+/, '').trim();
+    document.getElementById('game-prompt').value = text;
+  }
+
+  // ── STATUS MESSAGES ──
+  const statusMessages = [
+    'Creating your party game...',
+    'Adding drinking rules...',
+    'Making it extra fun...',
+    'Almost ready to play...'
+  ];
+
+  let statusInterval;
+
+  function startStatusCycle() {
+    let i = 0;
+    document.getElementById('status-text').textContent = statusMessages[0];
+    statusInterval = setInterval(() => {
+      i = (i + 1) % statusMessages.length;
+      document.getElementById('status-text').textContent = statusMessages[i];
+    }, 2000);
+  }
+
+  function stopStatusCycle() {
+    clearInterval(statusInterval);
+  }
+
+  // ── CREATE GAME ──
+  async function createGame() {
+    const prompt = document.getElementById('game-prompt').value.trim();
+    if (!prompt) {
+      document.getElementById('game-prompt').focus();
+      return;
+    }
+
+    if (prompt.length > 500) {
+      showError('Please keep your game description under 500 characters.');
+      return;
+    }
+
+    document.getElementById('create-btn').disabled = true;
+    document.getElementById('create-btn').textContent = 'GENERATING...';
+    document.getElementById('status-bar').classList.add('visible');
+    hideError();
+    startStatusCycle();
+
+    try {
+      // First create a room for multiplayer
+      const roomResponse = await fetch('/api/create-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerName: 'Host' })
+      });
+
+      if (!roomResponse.ok) {
+        throw new Error('Failed to create multiplayer room');
+      }
+
+      const roomData = await roomResponse.json();
+      currentRoom = roomData.roomCode;
+      isHost = true;
+      playerName = 'Host';
+
+      // Generate game and save to room
+      const gameResponse = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt,
+          roomCode: currentRoom 
+        })
+      });
+
+      if (!gameResponse.ok) {
+        const error = await gameResponse.json();
+        throw new Error(error.error || 'Failed to generate game');
+      }
+
+      const gameData = await gameResponse.json();
+      generatedGameHtml = gameData.html;
+      
+      // Update limit badge
+      if (gameData.remaining !== undefined) {
+        const badge = document.getElementById('limit-badge');
+        badge.style.display = 'block';
+        badge.textContent = `${gameData.remaining} FREE ${gameData.remaining === 1 ? 'GAME' : 'GAMES'} LEFT`;
+      }
+
+      stopStatusCycle();
+      document.getElementById('status-bar').classList.remove('visible');
+
+      // Show lobby - users can invite friends or play solo
+      showLobby(currentRoom);
+
+    } catch (err) {
+      stopStatusCycle();
+      document.getElementById('status-bar').classList.remove('visible');
+      showError(err.message);
+    } finally {
+      document.getElementById('create-btn').disabled = false;
+      document.getElementById('create-btn').textContent = 'GENERATE PARTY GAME';
+    }
+  }
+
+  // ── JOIN ROOM ──
+  async function joinRoom() {
+    const code = document.getElementById('join-code').value.trim().toUpperCase();
+    const name = document.getElementById('player-name').value.trim();
+
+    if (!code || !name) {
+      showError('Please enter both room code and your name');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/join-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomCode: code, playerName: name })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to join room');
+      }
+
+      const data = await response.json();
+      currentRoom = code;
+      playerName = name;
+      isHost = false;
+
+      showLobby(code);
+
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  // ── SHOW LOBBY ──
+  let pollInterval = null;
+
+  function showLobby(roomCode) {
+    document.getElementById('room-code-display').textContent = roomCode;
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('lobby-screen').classList.add('active');
+
+    // Show start button only for host
+    if (isHost) {
+      document.getElementById('start-game-btn').style.display = 'block';
+    } else {
+      document.getElementById('start-game-btn').style.display = 'none';
+    }
+
+    // Start polling for room state
+    fetchRoomState(roomCode);
+    pollInterval = setInterval(() => fetchRoomState(roomCode), 2000);
+  }
+
+  // ── FETCH ROOM STATE ──
+  async function fetchRoomState(roomCode) {
+    try {
+      const response = await fetch(`/api/room-state?roomCode=${roomCode}`);
+      if (!response.ok) return;
+      
+      const data = await response.json();
+      updatePlayersList(data.players);
+      
+      // If game started, show game
+      if (data.gameStarted && data.gameHtml) {
+        clearInterval(pollInterval);
+        displayGame(data.gameHtml);
+      }
+    } catch (err) {
+      console.error('Failed to fetch room state:', err);
+    }
+  }
+
+  // ── UPDATE PLAYERS LIST ──
+  function updatePlayersList(players) {
+    const container = document.getElementById('players-container');
+    const count = document.getElementById('player-count');
+    
+    count.textContent = players.length;
+    container.innerHTML = players.map(player => `
+      <div class="player-item">
+        <span class="player-name">${escapeHtml(player.name)}</span>
+        ${player.isHost ? '<span class="host-badge">HOST</span>' : ''}
+      </div>
+    `).join('');
+  }
+
+  // ── START GAME ──
+  async function startGame() {
+    if (!isHost || !currentRoom) return;
+
+    try {
+      const response = await fetch('/api/start-game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomCode: currentRoom, playerName: playerName })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to start game');
+      }
+
+      // Game will be displayed via polling
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  // ── DISPLAY GAME ──
+  function displayGame(html) {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+    }
+
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    
+    const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+    const gameTitle = titleMatch ? titleMatch[1].toUpperCase() : 'YOUR PARTY GAME';
+    document.getElementById('game-title').textContent = gameTitle;
+
+    const frame = document.getElementById('game-frame');
+    frame.srcdoc = html;
+    
+    document.getElementById('game-section').classList.add('visible');
+    
+    // Store the HTML for sharing
+    generatedGameHtml = html;
+    
+    setTimeout(() => {
+      document.getElementById('game-section').scrollIntoView({ behavior: 'smooth' });
+    }, 200);
+  }
+
+  // ── SHARE GAME ──
+  async function shareGame() {
+    if (!generatedGameHtml) {
+      showError('No game to share');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/save-game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameHtml: generatedGameHtml })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create share link');
+      }
+
+      const data = await response.json();
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(data.shareUrl);
+      
+      alert(`Share link copied to clipboard!\n\n${data.shareUrl}\n\nAnyone with this link can play your game!`);
+
+    } catch (err) {
+      showError(err.message || 'Failed to create share link');
+    }
+  }
+
+  // ── LEAVE LOBBY ──
+  function leaveLobby() {
+    resetToHome();
+  }
+
+  // ── RESET ──
+  function resetToHome() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+    
+    document.getElementById('game-section').classList.remove('visible');
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('create-screen').classList.add('active');
+    document.getElementById('game-prompt').value = '';
+    currentRoom = null;
+    isHost = false;
+    playerName = '';
+    generatedGameHtml = null;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── ERROR HANDLING ──
+  function showError(message) {
+    const errorBox = document.getElementById('error-box');
+    errorBox.textContent = message;
+    errorBox.classList.add('visible');
+  }
+
+  function hideError() {
+    document.getElementById('error-box').classList.remove('visible');
+  }
+
+  // ── UTILITIES ──
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // ── KEYBOARD SHORTCUTS ──
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.ctrlKey && currentMode === 'create') {
+      createGame();
+    }
+  });
+</script>
+</body>
+</html>
