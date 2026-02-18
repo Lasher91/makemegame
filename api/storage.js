@@ -1,70 +1,49 @@
-// Shared storage utility
-// NOTE: This uses in-memory storage which resets on serverless cold starts
-// For production, replace with Vercel KV or Redis
+// Storage utility using Vercel KV (Redis)
+import { kv } from '@vercel/kv';
 
-class MemoryStore {
-  constructor() {
-    if (!global.gameStorage) {
-      global.gameStorage = {
-        rooms: new Map(),
-        savedGames: new Map()
-      };
-    }
-    this.storage = global.gameStorage;
-  }
-
+class KVStore {
   // Room methods
-  getRoom(roomCode) {
-    return this.storage.rooms.get(roomCode.toUpperCase());
+  async getRoom(roomCode) {
+    const key = `room:${roomCode.toUpperCase()}`;
+    return await kv.get(key);
   }
 
-  setRoom(roomCode, data) {
-    this.storage.rooms.set(roomCode.toUpperCase(), data);
+  async setRoom(roomCode, data) {
+    const key = `room:${roomCode.toUpperCase()}`;
+    // Expire rooms after 2 hours
+    await kv.set(key, data, { ex: 7200 });
   }
 
-  deleteRoom(roomCode) {
-    this.storage.rooms.delete(roomCode.toUpperCase());
-  }
-
-  getAllRooms() {
-    return this.storage.rooms;
+  async deleteRoom(roomCode) {
+    const key = `room:${roomCode.toUpperCase()}`;
+    await kv.del(key);
   }
 
   // Saved game methods
-  getSavedGame(gameId) {
-    return this.storage.savedGames.get(gameId);
+  async getSavedGame(gameId) {
+    const key = `game:${gameId}`;
+    return await kv.get(key);
   }
 
-  setSavedGame(gameId, data) {
-    this.storage.savedGames.set(gameId, data);
+  async setSavedGame(gameId, data) {
+    const key = `game:${gameId}`;
+    // Expire saved games after 7 days
+    await kv.set(key, data, { ex: 604800 });
   }
 
-  deleteSavedGame(gameId) {
-    this.storage.savedGames.delete(gameId);
+  async deleteSavedGame(gameId) {
+    const key = `game:${gameId}`;
+    await kv.del(key);
   }
 
-  getAllSavedGames() {
-    return this.storage.savedGames;
+  // Cleanup methods (automatic with TTL/expiration)
+  async cleanupOldRooms() {
+    // Not needed - Redis handles expiration automatically
   }
 
-  // Cleanup methods
-  cleanupOldRooms() {
-    const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
-    for (const [code, room] of this.storage.rooms.entries()) {
-      if (room.createdAt < twoHoursAgo) {
-        this.storage.rooms.delete(code);
-      }
-    }
-  }
-
-  cleanupOldGames() {
-    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    for (const [id, game] of this.storage.savedGames.entries()) {
-      if (game.createdAt < sevenDaysAgo) {
-        this.storage.savedGames.delete(id);
-      }
-    }
+  async cleanupOldGames() {
+    // Not needed - Redis handles expiration automatically
   }
 }
 
-export const storage = new MemoryStore();
+export const storage = new KVStore();
