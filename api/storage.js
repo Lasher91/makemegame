@@ -1,49 +1,54 @@
-// Storage utility using Vercel KV (Redis)
-import { kv } from '@vercel/kv';
+// Storage utility using ioredis for traditional Redis
+import Redis from 'ioredis';
 
-class KVStore {
+// Initialize Redis client from REDIS_URL environment variable
+const redis = new Redis(process.env.REDIS_URL);
+
+class RedisStore {
   // Room methods
   async getRoom(roomCode) {
     const key = `room:${roomCode.toUpperCase()}`;
-    return await kv.get(key);
+    const data = await redis.get(key);
+    return data ? JSON.parse(data) : null;
   }
 
   async setRoom(roomCode, data) {
     const key = `room:${roomCode.toUpperCase()}`;
-    // Expire rooms after 2 hours
-    await kv.set(key, data, { ex: 7200 });
+    // Expire rooms after 2 hours (7200 seconds)
+    await redis.set(key, JSON.stringify(data), 'EX', 7200);
   }
 
   async deleteRoom(roomCode) {
     const key = `room:${roomCode.toUpperCase()}`;
-    await kv.del(key);
+    await redis.del(key);
   }
 
   // Saved game methods
   async getSavedGame(gameId) {
     const key = `game:${gameId}`;
-    return await kv.get(key);
+    const data = await redis.get(key);
+    return data ? JSON.parse(data) : null;
   }
 
   async setSavedGame(gameId, data) {
     const key = `game:${gameId}`;
-    // Expire saved games after 7 days
-    await kv.set(key, data, { ex: 604800 });
+    // Expire saved games after 7 days (604800 seconds)
+    await redis.set(key, JSON.stringify(data), 'EX', 604800);
   }
 
   async deleteSavedGame(gameId) {
     const key = `game:${gameId}`;
-    await kv.del(key);
+    await redis.del(key);
   }
 
   // Cleanup methods (automatic with TTL/expiration)
   async cleanupOldRooms() {
-    // Not needed - Redis handles expiration automatically
+    // Not needed - Redis handles expiration automatically with EX
   }
 
   async cleanupOldGames() {
-    // Not needed - Redis handles expiration automatically
+    // Not needed - Redis handles expiration automatically with EX
   }
 }
 
-export const storage = new KVStore();
+export const storage = new RedisStore();
