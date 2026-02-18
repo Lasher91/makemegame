@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Room code is required' });
   }
 
-  const room = storage.getRoom(roomCode);
+  const room = await storage.getRoom(roomCode);
 
   if (!room) {
     return res.status(404).json({ error: 'Room not found' });
