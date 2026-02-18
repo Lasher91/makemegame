@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  storage.cleanupOldGames();
+  await storage.cleanupOldGames();
 
   const { gameHtml } = req.body;
 
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   const titleMatch = gameHtml.match(/<title>(.*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1] : 'Party Game';
 
-  storage.setSavedGame(gameId, {
+  await storage.setSavedGame(gameId, {
     html: gameHtml,
     title: title,
     createdAt: Date.now()
