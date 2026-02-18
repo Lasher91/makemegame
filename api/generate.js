@@ -1,6 +1,8 @@
 // Vercel Serverless Function for game generation
 // This handles the API calls to Claude so users don't need API keys
 
+import { storage } from './storage.js';
+
 export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') {
@@ -14,8 +16,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server configuration error - no API key' });
   }
 
-  // Get the game prompt from the request
-  const { prompt } = req.body;
+  // Get the prompt and optional roomCode from request
+  const { prompt, roomCode } = req.body;
   
   if (!prompt || prompt.trim().length === 0) {
     return res.status(400).json({ error: 'Game description is required' });
@@ -26,26 +28,38 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Game description too long (max 500 characters)' });
   }
 
-  const systemPrompt = `You are an expert game developer who creates complete, playable browser games using HTML, CSS, and JavaScript in a single file.
+  const systemPrompt = `You are an expert party game developer who creates complete, playable browser games for social gatherings, parties, and group fun using HTML, CSS, and JavaScript in a single file.
 
-RULES:
+CRITICAL RULES:
 1. Generate ONLY a complete, valid HTML file - nothing else, no explanation, no markdown
 2. The game must be immediately playable - no setup required
 3. Include ALL game logic, styles, and assets inline
-4. Make the game visually appealing with a dark theme
-5. Add a score system where appropriate
-6. Add clear instructions within the game UI
+4. Make the game visually fun, colorful, and party-appropriate
+5. For drinking games, use terms like "take a sip" not explicit alcohol references
+6. Add score/points system, player turns, or voting mechanics as appropriate
 7. The game must work in an iframe sandbox (allow-scripts)
-8. Use canvas or DOM elements - no external libraries
-9. Make it fun and polished
-10. Add sound effects using the Web Audio API where appropriate
-11. The game title should match what the user asked for
+8. Use DOM elements for interactive party games
+9. Include clear, easy-to-read instructions
+10. Make it social - encourage interaction, laughter, and conversation
+11. Add fun sound effects using Web Audio API
+12. The game title should match what the user asked for
 
-Create a genuinely fun, complete game. Be creative with the mechanics.`;
+PARTY GAME BEST PRACTICES:
+- For trivia: Make questions fun, surprising, and conversation-starting
+- For drinking games: Include "rules" like "take a sip if..." or "drink if you've never..."
+- For "Cards Against Humanity" style: Generate hilarious, slightly edgy but not offensive prompts and responses
+- For "Never Have I Ever": Create 15-20 varied, funny scenarios
+- For "Truth or Dare": Balance embarrassing with funny, keep dares doable
+- For voting games ("Most Likely To..."): Generate creative, funny scenarios
+- Always include a "Next Round" or "Play Again" button
+- Use big, readable fonts - people might be drinking!
+- Add animations and celebrations for wins/funny moments
 
-  const userMessage = `Create a complete playable browser game based on this description: "${prompt}"
+Create a genuinely fun party game that gets people laughing and talking.`;
 
-The game should be creative, fun, and immediately playable. Include a score system, lives/health if appropriate, and a game over screen with restart option. Make it visually polished with animations.`;
+  const userMessage = `Create a complete playable PARTY GAME for a social gathering based on this description: "${prompt}"
+
+The game should be hilarious, social, and perfect for a party atmosphere. Make it visually fun with bright colors. Include clear instructions, easy navigation, and keep the energy high. If it's a drinking game, use phrases like "take a sip" or "drink if...". Make it memorable!`;
 
   try {
     // Call Claude API
@@ -85,6 +99,15 @@ The game should be creative, fun, and immediately playable. Include a score syst
         ? gameCode.indexOf('<!DOCTYPE') 
         : gameCode.indexOf('<html');
       html = gameCode.substring(start);
+    }
+
+    // If roomCode provided, save game to room
+    if (roomCode) {
+      const room = await storage.getRoom(roomCode);
+      if (room) {
+        room.gameHtml = html;
+        await storage.setRoom(roomCode, room);
+      }
     }
 
     // Return the game HTML
