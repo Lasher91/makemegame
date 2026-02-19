@@ -21,6 +21,9 @@ export default async function handler(req, res) {
   return res.status(200).json({
     players: room.players,
     gameStarted: room.gameStarted,
-    gameHtml: room.gameHtml
+    gameHtml: room.gameHtml,
+    gameData: room.gameData,
+    currentRound: room.currentRound || 0,
+    gameComplete: room.gameComplete || false
   });
 }
