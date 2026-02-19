@@ -883,6 +883,7 @@
   let hasVoted = false;
   let votingInterval = null;
   let currentRoomPlayers = [];
+  let displayedRound = 0; // Track which round is currently shown
 
   // ── MODE SWITCHING ──
   function switchMode(mode) {
@@ -1234,6 +1235,7 @@
     votingGameData = null;
     hasVoted = false;
     currentRoomPlayers = [];
+    displayedRound = 0;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -1258,6 +1260,7 @@
   // ── VOTING GAME FUNCTIONS ──
   function showVotingGame(gameData) {
     votingGameData = gameData;
+    displayedRound = 0;
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('voting-screen').classList.add('active');
 
@@ -1274,6 +1277,7 @@
   function showVotingRound(roundIndex) {
     const round = votingGameData.rounds[roundIndex];
     hasVoted = false;
+    displayedRound = roundIndex; // Track displayed round
 
     // Update progress
     document.getElementById('voting-current-round').textContent = roundIndex + 1;
@@ -1374,6 +1378,13 @@
       }
 
       const currentRoundIndex = roomData.currentRound || 0;
+
+      // If round changed (host advanced), show new round for everyone
+      if (currentRoundIndex !== displayedRound) {
+        displayedRound = currentRoundIndex;
+        showVotingRound(currentRoundIndex);
+        return; // Don't fetch votes yet, let them vote first
+      }
 
       const votesResponse = await fetch(
         `/api/get-votes?roomCode=${currentRoom}&roundIndex=${currentRoundIndex}`
