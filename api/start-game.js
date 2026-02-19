@@ -24,7 +24,8 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Only the host can start the game' });
   }
 
-  if (!room.gameHtml) {
+  // Check if game is ready (either HTML or gameData for voting)
+  if (!room.gameHtml && !room.gameData) {
     return res.status(400).json({ error: 'Game not generated yet' });
   }
 
@@ -33,6 +34,7 @@ export default async function handler(req, res) {
 
   return res.status(200).json({
     success: true,
-    gameHtml: room.gameHtml
+    gameHtml: room.gameHtml,
+    gameData: room.gameData
   });
 }
