@@ -1068,12 +1068,23 @@
       if (!response.ok) return;
       
       const data = await response.json();
+      currentRoomPlayers = data.players;
       updatePlayersList(data.players);
       
-      // If game started, show game
-      if (data.gameStarted && data.gameHtml) {
+      // If game started
+      if (data.gameStarted) {
         clearInterval(pollInterval);
-        displayGame(data.gameHtml);
+        
+        // Check if it's a voting game
+        if (data.gameData && data.gameData.gameType === 'voting') {
+          votingGameData = data.gameData;
+          isVotingGame = true;
+          showVotingGame(data.gameData);
+        } 
+        // Regular HTML game
+        else if (data.gameHtml) {
+          displayGame(data.gameHtml);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch room state:', err);
@@ -1099,9 +1110,24 @@
     if (!isHost || !currentRoom) return;
 
     try {
-      // If it's a voting game, show voting UI directly
+      // If it's a voting game, fetch players first then show UI
       if (isVotingGame && votingGameData) {
         if (pollInterval) clearInterval(pollInterval);
+        
+        // Fetch current room state to get player list
+        const roomResponse = await fetch(`/api/room-state?roomCode=${currentRoom}`);
+        if (roomResponse.ok) {
+          const roomData = await roomResponse.json();
+          currentRoomPlayers = roomData.players;
+        }
+        
+        // Mark game as started in backend
+        await fetch('/api/start-game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomCode: currentRoom, playerName: playerName })
+        });
+        
         showVotingGame(votingGameData);
         return;
       }
@@ -1272,6 +1298,18 @@
     const options = round.voteType === 'players' 
       ? currentRoomPlayers.map(p => p.name)
       : round.options;
+
+    // Safety check - if no options, show message
+    if (!options || options.length === 0) {
+      votingArea.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-dim);">Loading players...</div>';
+      // Retry after a moment
+      setTimeout(() => {
+        if (currentRoomPlayers.length > 0) {
+          showVotingRound(roundIndex);
+        }
+      }, 1000);
+      return;
+    }
 
     options.forEach(option => {
       const btn = document.createElement('button');
